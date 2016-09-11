@@ -1,0 +1,110 @@
+{source}
+<!-- You can place html anywhere within the source tags -->
+
+
+<script language="javascript" type="text/javascript">
+ // You can place JavaScript like this
+ 
+</script>
+<?php
+ 
+function calcChecksum($jsonString, $salt) {
+$checksum = hash('sha256', $jsonString . $salt);
+return $checksum;
+ 
+}
+ 
+$url = "https://easel1.fulgentcorp.com/bifrost/ws.php?json=" . urlencode("[{\"action\":\"login\"},{\"login\":\"joomla_user\"},{\"password\":\"4ff7a9f299972155ed7b6c55a7b7b574ab55e4fcb4d09b1498c92626b2486420\"},{\"app_code\":\"4bP0dOKe0HqceVvx\"},{\"checksum\":\"d4ed8bde50510d7ae0317303b26505cf739cc8df741b251d103850b1b39a7a20\"}]");
+
+
+  $ch = curl_init();
+
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 40);
+curl_setopt($ch, CURLOPT_TIMEOUT, 80);
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
+curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+//curl_setopt($ch, CURLOPT_SSLVERSION, 2); 
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+$output = curl_exec($ch);
+
+curl_close($ch);
+ 
+
+
+//print($output);
+$myArr = json_decode($output,true);
+ 
+$salt = $myArr[4]['session_salt'];
+  
+/*
+echo "Session ID:  {$myArr[3]['session_id']}" ;
+echo "<br>";
+echo "Session Salt :  {$salt}";
+echo "<br>";
+echo "Session Checksum:  {$myArr[5]['checksum']}";
+echo "<br>";
+*/ 
+ 
+// $sql = mysql_query("SELECT * FROM test_table'");
+ 
+$sesid = $myArr[3]['session_id'];
+//echo "TEST ";
+ 
+//  print($sesid); print($sql);
+ //1. assemble the run_sql query JSON request
+$jsonArray = array();
+//add the action KV pair
+array_push($jsonArray, array('action' => 'run_sql'));
+//add the session id KV pair
+array_push($jsonArray, array('session_id' => $sesid));
+//add the query KV pair
+array_push($jsonArray, array('query' => 'SELECT * FROM test_table where id = 3'));
+//calc checksum from request (must first JSON encode the JSON array)
+$jsonRequest = json_encode($jsonArray);
+$checksum = calcChecksum(json_encode($jsonArray, JSON_UNESCAPED_SLASHES), $salt);
+ //add the checksum KV pair
+array_push($jsonArray, array('checksum' => $checksum));
+//encode the JSON array
+$jsonRequest = json_encode($jsonArray);
+ 
+//DEBUG
+//print("Checksum: " . $checksum . "<br/>");
+//print("JSON-encoded request: " . $jsonRequest . "<br/>"); 
+ 
+//send to web service
+$url = "https://easel1.fulgentcorp.com/bifrost/ws.php?json=" . urlencode($jsonRequest);
+ 
+$ch = curl_init();
+
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 40);
+curl_setopt($ch, CURLOPT_TIMEOUT, 80);
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
+curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+//curl_setopt($ch, CURLOPT_SSLVERSION, 2); 
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+$output = curl_exec($ch);
+
+curl_close($ch);
+//print(htmlspecialchars($output));
+//extract the html from the article in my database
+$myArr = json_decode($output,true);
+$rows = $myArr[1]['message'];
+//row is set to first record in rows (row is an array of arrays, where each array in row is a 1 element KV pair array
+$row = $rows[0];
+//print the text contained in the test_string field of row 1 (or index 0)
+print($row[1]['test_string']);
+//print_r($row);
+ 
+?>
+{/source}
+
